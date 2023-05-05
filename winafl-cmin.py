@@ -134,9 +134,15 @@ class AFLShowMapWorker(object):
 
             # Clean it up
             os.remove(trace_name)
+
+        #input_file maybe not exist
+        try:
+            fsize = os.path.getsize(input_file)
+        except:
+            fsize = 0
         return AFLShowMapResult(
             p.returncode, input_file,
-            os.path.getsize(input_file), tuples
+            fsize, tuples
         )
 
 
@@ -675,10 +681,17 @@ def do_unique_copy(filepaths, dest_dir):
         if not os.path.isdir(dest_dir):
             raise
     num_digits = len(str(len(filepaths)-1))
+    #writedown all names
+    with open("!log_unique_file.txt", "wt") as f:
+        for i, fpath in enumerate(filepaths):
+            f.write("%d\t%s\n" % (i, fpath))
     for i, fpath in enumerate(filepaths):
         filename = os.path.basename(fpath)
         dest_path = os.path.join(dest_dir, 'id_' + str(i).zfill(num_digits) + "_" + filename)
-        shutil.copy(fpath, dest_path)
+        try:
+            shutil.copy(fpath, dest_path)
+        except Exception:
+            pass
 
 
 def main(argc, argv):
@@ -725,6 +738,17 @@ def main(argc, argv):
     for path in args.input:
         for root, dirs, files in os.walk(path):
             for file_ in files:
+                fullname = os.path.join(root, file_)
+                #print("file_:",fullname)
+                # exclude some file
+                if not os.access(fullname, os.R_OK):
+                    continue
+                if os.path.getsize(fullname) > 1000000:
+                    continue
+                if 'Logs' in fullname:
+                    continue
+                if 'LCU' in fullname:
+                    continue
                 inputs.append(os.path.join(root, file_))
 
     if not inputs:
